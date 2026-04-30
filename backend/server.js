@@ -107,6 +107,23 @@ app.post('/api/group/join', async (req, res) => {
     }
 });
 
+app.post('/api/group/leave', async (req, res) => {
+    const { group_id, user_id } = req.body;
+    try {
+        const check = await pool.query('SELECT * FROM group_members WHERE group_id = $1 AND user_id = $2', [group_id, user_id]);
+        if (check.rows.length === 0) {
+            return res.status(400).json({ error: 'User is not a member of the group' });
+        } else{
+            const leave = await pool.query('DELETE FROM group_members WHERE group_id = $1 AND user_id = $2 RETURNING *', [group_id, user_id]);
+            res.json({ group_member: leave.rows[0] });
+        }
+            console.log('Left group successfully');
+    } catch (error) {
+            console.error('Error occurred while leaving group:', error);
+            res.status(500).json({ error: 'Internal server error' });
+    }
+})
+
 
 app.listen(5000, () => {
     console.log(`Server is running on port 5000`);
