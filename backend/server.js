@@ -45,6 +45,10 @@ function authenticateToken(req, res, next){
 app.use(cors());
 app.use(express.json());
 
+app.get('/api/verify', authenticateToken, (req, res) => {
+    res.json({ message: 'Token is valid' });
+})
+
 
 app.post('/api/register', async (req, res) => {
     console.log('Received registration request:', req.body);
@@ -83,11 +87,14 @@ app.post('/api/login', async (req, res) => {
             }
             const token = jwt.sign({ userId: user.user_id }, process.env.JWT_SECRET, { expiresIn: '1h' });
             res.json({ token });
+            
+
         }
     } catch (error) {
         console.error('Error occurred while logging in user:', error);
         res.status(500).json({ error: 'Internal server error' });
-    } 
+    }
+
     
 })
 
