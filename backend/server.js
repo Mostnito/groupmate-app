@@ -214,7 +214,7 @@ app.get('/api/group/:group_id/members', authenticateToken, async (req, res) => {
 app.get('/api/group/:group_id/tasks', authenticateToken, async (req, res) => {
     const group_id = req.params.group_id;
     try {
-        const tasks = await pool.query('SELECT DISTINCT t.task_id, t.group_id, g.group_name, t.assigned_to, u.name as assigned_name, t.task_name, t.task_des, t.start_date, t.end_date FROM tasks t JOIN groups g ON t.group_id = g.group_id JOIN users u ON t.assigned_to = u.user_id WHERE t.group_id = $1 ORDER BY t.end_date ASC', [group_id]);
+        const tasks = await pool.query('SELECT DISTINCT t.task_id, t.group_id, g.group_name, t.assigned_to, u.name as assigned_name, t.task_name, t.task_des, t.start_date, t.end_date, t.task_status FROM tasks t JOIN groups g ON t.group_id = g.group_id JOIN users u ON t.assigned_to = u.user_id WHERE t.group_id = $1 ORDER BY t.end_date ASC', [group_id]);
         res.json({ tasks: tasks.rows });
         console.log('Fetched group tasks successfully');
     } catch (error) {
@@ -350,7 +350,7 @@ app.delete('/api/task/delete', authenticateToken, async (req, res) => {
 app.get('/api/task', authenticateToken, async (req, res) => {
     const user_id = req.user.userId;
     try {
-        const tasks = await pool.query('SELECT t.task_id, t.group_id, g.group_name, t.assigned_to, t.task_name, t.task_des, t.start_date, t.end_date FROM tasks t JOIN group_members gm ON t.group_id = gm.group_id JOIN groups g ON t.group_id = g.group_id WHERE gm.user_id = $1 ORDER BY t.end_date ASC', [user_id]);
+        const tasks = await pool.query('SELECT t.task_id, t.group_id, g.group_name, t.assigned_to, t.task_name, t.task_des, t.start_date, t.end_date, t.task_status FROM tasks t JOIN group_members gm ON t.group_id = gm.group_id JOIN groups g ON t.group_id = g.group_id WHERE gm.user_id = $1 ORDER BY t.end_date ASC', [user_id]);
         res.json({ tasks: tasks.rows });
         console.log('Fetched task data successfully');
     } catch (error) {
@@ -362,11 +362,30 @@ app.get('/api/task', authenticateToken, async (req, res) => {
 app.get('/api/task/:user_id', authenticateToken, async (req, res) => {
     const user_id = req.params.user_id;
     try {
-        const tasks = await pool.query('SELECT DISTINCT t.task_id, t.group_id, g.group_name, t.assigned_to, t.task_name, t.task_des, t.start_date, t.end_date FROM tasks t JOIN group_members gm ON t.group_id = gm.group_id JOIN groups g ON t.group_id = g.group_id WHERE t.assigned_to = $1 ORDER BY t.end_date ASC', [user_id]);
+        const tasks = await pool.query('SELECT DISTINCT t.task_id, t.group_id, g.group_name, t.assigned_to, t.task_name, t.task_des, t.start_date, t.end_date, t.task_status FROM tasks t JOIN group_members gm ON t.group_id = gm.group_id JOIN groups g ON t.group_id = g.group_id WHERE t.assigned_to = $1 ORDER BY t.end_date ASC', [user_id]);
         res.json({ tasks: tasks.rows });
         console.log('Fetched task data successfully');
     } catch (error) {
         console.error('Error occurred while fetching task data:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+})
+
+app.get('/api/task/detail/:task_id', authenticateToken, async (req, res) => {
+    const task_id = req.params.task_id;
+    try {
+        const task = await pool.query(
+            'SELECT t.task_id, t.group_id, g.group_name, t.assigned_to, u.name as assigned_name, t.created_by, t.task_name, t.task_des, t.start_date, t.end_date, t.task_status FROM tasks t JOIN groups g ON t.group_id = g.group_id JOIN users u ON t.assigned_to = u.user_id WHERE t.task_id = $1',
+            [task_id]
+        );
+
+        if (task.rows.length === 0) {
+            return res.status(404).json({ error: 'Task not found' });
+        }
+
+        res.json({ task: task.rows[0] });
+    } catch (error) {
+        console.error('Error occurred while fetching task detail:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 })
@@ -378,7 +397,8 @@ app.post('/api/task/submit', authenticateToken, async (req, res) => {
         if (check.rows.length === 0) {
             return res.status(400).json({ error: 'User is not assigned to the task' });
         } else{
-            const submitTask = await pool.query('INSERT INTO submissions (task_id, user_id, file, comment) VALUES ($1, $2, $3, $4) RETURNING *', [task_id, user_id, file, comment]);
+            const submitTask = await pool.query('INSERT INTO task_submission (task_id, user_id, file_path, comment) VALUES ($1, $2, $3, $4) RETURNING *', [task_id, user_id, file, comment]);
+            const updateTask = await pool.query('UPDATE tasks SET task_status = $1 WHERE task_id = $2 RETURNING *', ['submitted', task_id]);
             res.json({ submission: submitTask.rows[0] });
         }
         console.log('Task submitted successfully');
@@ -387,6 +407,48 @@ app.post('/api/task/submit', authenticateToken, async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 })
+
+app.put('/api/task/check', authenticateToken, async (req, res) => {
+    const { task_id, reviewd_by, reviewd_comment } = req.body;
+    try {
+        const check = await pool.query('SELECT * FROM tasks WHERE task_id = $1 AND created_by = $2', [task_id, reviewd_by]);
+        if (check.rows.length === 0) {
+            return res.status(400).json({ error: 'User is not the leader of the group or task not found' });
+        } else {
+            const updateTask = await pool.query('UPDATE tasks SET task_status = $1 WHERE task_id = $2 RETURNING *', ['reviewed', task_id]);
+            const updateSubmission = await pool.query('UPDATE task_submission SET reviewed_by = $1, reviewd_at = NOW(), reviewed_comment = $2 WHERE task_id = $3 RETURNING *', [reviewd_by, reviewd_comment, task_id]);
+            res.json({ task: updateTask.rows[0] });
+        }
+    } catch (error) {
+        console.error('Error occurred while checking task:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+})
+
+app.get('/api/task/:task_id/submission', authenticateToken, async (req, res) => {
+    const task_id = req.params.task_id;
+    const user_id = req.user.userId;
+    try {
+        const taskCheck = await pool.query('SELECT task_id, assigned_to, created_by FROM tasks WHERE task_id = $1', [task_id]);
+        if (taskCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'No submission found' });
+        }
+
+        const task = taskCheck.rows[0];
+        if (task.assigned_to !== user_id && task.created_by !== user_id) {
+            return res.status(403).json({ error: 'Not allowed to view this submission' });
+        }
+
+        const submission = await pool.query('SELECT task_summission_id, task_id, user_id, file_path, comment, submitted_at, reviewed_by, reviewed_comment FROM task_submission WHERE task_id = $1 ORDER BY submitted_at DESC LIMIT 1', [task_id]);
+        if (submission.rows.length === 0) {
+            return res.status(404).json({ error: 'No submission found' });
+        }
+        res.json({ submission: submission.rows[0] });
+    } catch (error) {
+        console.error('Error occurred while fetching submission:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 app.post('/api/chat/send', authenticateToken, async (req, res) => {
     const { group_id, user_id, message } = req.body;

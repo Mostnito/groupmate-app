@@ -196,14 +196,14 @@ function Setting() {
                                     />
                                 </div>
                                 <div className="form-group">
-                                    <label htmlFor="email">เมล</label>
+                                    <label htmlFor="email">อีเมล</label>
                                     <input
                                         type="email"
                                         id="email"
                                         name="email"
                                         value={tempFormData.email}
                                         onChange={handleChange}
-                                        placeholder="กรุณากรอกเมล"
+                                        placeholder="กรุณากรอกอีเมล"
                                         disabled={saving}
                                     />
                                 </div>

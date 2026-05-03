@@ -38,6 +38,26 @@
 	gap: 16px;
 }
 
+.task-filters {
+	align-items: center;
+}
+
+.filter-btn {
+	background: white;
+	border: 1px solid var(--border-color);
+	color: var(--primary-blue);
+	padding: 8px 12px;
+	border-radius: 8px;
+	cursor: pointer;
+	font-weight: 700;
+}
+
+.filter-btn.active {
+	background: linear-gradient(90deg, var(--primary-blue), var(--navy-blue));
+	color: white;
+	border-color: transparent;
+}
+
 .loading-state {
 	padding: 60px 20px;
 	text-align: center;

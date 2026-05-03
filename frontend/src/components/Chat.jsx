@@ -235,7 +235,8 @@ function Chat() {
 									className={`chat-message ${item.sender === 'เรา' ? 'own' : 'other'}`}
 								>
 									<div className="message-content">
-										<span className="message-sender">{item.sender}</span>
+										{item.sender !== 'เรา' ? <span className="message-sender">{item.sender}</span> : null}                
+										
 										<p>{item.text}</p>
 									</div>
 									<span className="message-time">{item.time}</span>

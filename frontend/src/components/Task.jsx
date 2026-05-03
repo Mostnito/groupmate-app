@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import './Task.css';
@@ -15,18 +16,30 @@ function formatDateTime(dateString) {
 function getDaysLeft(dateString) {
 	const now = new Date();
 	const target = new Date(dateString);
-	const diffMs = target - now;
-	const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-	if (diffDays < 0) return 'เลยกำหนด';
+	// First, check if the target time has already passed today.
+	const diffMs = target - now;
+	if (diffMs < 0) {
+		return 'เลยกำหนด';
+	}
+
+	// If not past due, then compare by days.
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	target.setHours(0, 0, 0, 0);
+
+	const diffDays = Math.round((target - today) / (1000 * 60 * 60 * 24));
+
 	if (diffDays === 0) return 'วันนี้';
 	if (diffDays === 1) return 'พรุ่งนี้';
 	return `${diffDays} วัน`;
 }
 
 function Task() {
+	const navigate = useNavigate();
 	const [tasks, setTasks] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const [selectedStatus, setSelectedStatus] = useState('all');
 
 	// Fetch tasks on component mount
 	useEffect(() => {
@@ -54,6 +67,7 @@ function Task() {
 					detail: task.task_des,
 					deadline: task.end_date,
 					groupName: task.group_name
+					,status: task.task_status || 'in_progress'
 				}));
 				setTasks(mappedTasks);
 				setLoading(false);
@@ -67,10 +81,20 @@ function Task() {
 	}, []);
 
 	const sortedTasks = [...tasks].sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+	const filteredTasks = sortedTasks.filter((t) => {
+		if (selectedStatus === 'all') return true;
+		return t.status === selectedStatus;
+	});
 
 	return (
 		<>
 			<div className="task-list">
+				<div className="task-filters" style={{display: 'flex', gap: 8, marginBottom: 12}}>
+					<button className={`filter-btn ${selectedStatus === 'all' ? 'active' : ''}`} onClick={() => setSelectedStatus('all')}>ทั้งหมด</button>
+					<button className={`filter-btn ${selectedStatus === 'in_progress' ? 'active' : ''}`} onClick={() => setSelectedStatus('in_progress')}>กำลังดำเนินการ</button>
+					<button className={`filter-btn ${selectedStatus === 'submitted' ? 'active' : ''}`} onClick={() => setSelectedStatus('submitted')}>ส่งแล้ว</button>
+					<button className={`filter-btn ${selectedStatus === 'reviewed' ? 'active' : ''}`} onClick={() => setSelectedStatus('reviewed')}>ตรวจแล้ว</button>
+				</div>
 				{loading ? (
 					<div className="loading-state">
 						<p>กำลังโหลดข้อมูล...</p>
@@ -80,9 +104,18 @@ function Task() {
 						<p>ยังไม่มีงานใดเลย</p>
 						<p className="sub-text">รอการมอบหมายงานจากเพื่อนร่วมกลุ่ม</p>
 					</div>
+				) : filteredTasks.length === 0 ? (
+					<div className="empty-state">
+						<p>ไม่มีงานสำหรับสถานะนี้</p>
+					</div>
 				) : (
-					sortedTasks.map((task) => (
-						<article className="task-card task-card-row" key={task.id}>
+					filteredTasks.map((task) => (
+						<article 
+							className="task-card task-card-row" 
+							key={task.id}
+							onClick={() => navigate(`/task-manage/${task.id}`)}
+							style={{ cursor: 'pointer' }}
+						>
 							<div className="task-main">
 								<div className="task-card-top">
 									<span className="task-group">{task.groupName}</span>

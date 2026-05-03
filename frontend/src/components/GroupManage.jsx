@@ -17,9 +17,16 @@ function getDaysLeft(dateString) {
 	const now = new Date();
 	const target = new Date(dateString);
 	const diffMs = target - now;
-	const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+	if (diffMs < 0) {
+		return 'เลยกำหนด';
+	}
 
-	if (diffDays < 0) return 'เลยกำหนด';
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	target.setHours(0, 0, 0, 0);
+
+	const diffDays = Math.round((target - today) / (1000 * 60 * 60 * 24));
+
 	if (diffDays === 0) return 'วันนี้';
 	if (diffDays === 1) return 'พรุ่งนี้';
 	return `${diffDays} วัน`;
@@ -31,6 +38,7 @@ function GroupManage() {
 	const [group, setGroup] = useState(null);
 	const [members, setMembers] = useState([]);
 	const [tasks, setTasks] = useState([]);
+	const [selectedStatus, setSelectedStatus] = useState('all');
 	const [loading, setLoading] = useState(true);
 	const [userRole, setUserRole] = useState(null);
 	const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
@@ -193,6 +201,10 @@ function GroupManage() {
 	}
 
 	const sortedTasks = [...tasks].sort((a, b) => new Date(a.end_date) - new Date(b.end_date));
+	const filteredTasks = sortedTasks.filter(t => {
+		if (selectedStatus === 'all') return true;
+		return (t.task_status || 'in_progress') === selectedStatus;
+	});
 
 	return (
 		<div className="group-manage-page">
@@ -209,16 +221,16 @@ function GroupManage() {
 				</div>
 				<div className="group-actions-top">
 					{userRole === 'leader' && (
-						<button className="action-btn create-task-btn" onClick={() => setShowCreateTaskModal(true)}>
+						<button className="action-btns create-task-btn" onClick={() => setShowCreateTaskModal(true)}>
 							เพิ่มงานใหม่
 						</button>
 					)}
 					{userRole === 'leader' ? (
-						<button className="action-btn delete-btn" onClick={handleDeleteGroup}>
+						<button className="action-btns delete-btn" onClick={handleDeleteGroup}>
 							ลบกลุ่ม
 						</button>
 					) : (
-						<button className="action-btn leave-btn" onClick={handleLeaveGroup}>
+						<button className="action-btns leave-btn" onClick={handleLeaveGroup}>
 							ออกจากกลุ่ม
 						</button>
 					)}
@@ -235,7 +247,7 @@ function GroupManage() {
 								<div className="member-info">
 									<span className="member-name">{member.name} {member.surname}</span>
 									<span className={`member-role role-${member.role}`}>
-										{member.role === 'leader' ? '👑 ผู้นำ' : '👤 สมาชิก'}
+										{member.role === 'leader' ? 'หัวหน้ากลุ่ม' : 'สมาชิก'}
 									</span>
 								</div>
 							</div>
@@ -246,14 +258,24 @@ function GroupManage() {
 				{/* Tasks Section */}
 				<section className="tasks-section">
 					<h2>งาน ({tasks.length})</h2>
+					<div className="task-filters" style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+						<button className={`filter-btn ${selectedStatus === 'all' ? 'active' : ''}`} onClick={() => setSelectedStatus('all')}>ทั้งหมด</button>
+						<button className={`filter-btn ${selectedStatus === 'in_progress' ? 'active' : ''}`} onClick={() => setSelectedStatus('in_progress')}>กำลังดำเนินการ</button>
+						<button className={`filter-btn ${selectedStatus === 'submitted' ? 'active' : ''}`} onClick={() => setSelectedStatus('submitted')}>ส่งแล้ว</button>
+						<button className={`filter-btn ${selectedStatus === 'reviewed' ? 'active' : ''}`} onClick={() => setSelectedStatus('reviewed')}>ตรวจแล้ว</button>
+					</div>
 					{tasks.length === 0 ? (
 						<div className="empty-state">
 							<p>ยังไม่มีงานในกลุ่มนี้</p>
 						</div>
 					) : (
 						<div className="tasks-list">
-							{sortedTasks.map((task) => (
-								<article className="task-card-manage" key={task.task_id}>
+							{filteredTasks.map((task) => (
+								<article
+									className="task-card-manage"
+									key={task.task_id}
+									onClick={() => navigate(`/task-manage/${task.task_id}`)}
+								>
 									<div className="task-main">
 										<div className="task-card-top">
 											<span className="task-deadline-badge">{getDaysLeft(task.end_date)}</span>
@@ -275,7 +297,6 @@ function GroupManage() {
 				</section>
 			</div>
 
-			{/* Create Task Modal */}
 			{showCreateTaskModal && (
 				<div className="modal-overlay" onClick={() => setShowCreateTaskModal(false)}>
 					<div className="modal-content" onClick={(e) => e.stopPropagation()}>

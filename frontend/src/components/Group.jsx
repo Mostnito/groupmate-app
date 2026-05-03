@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import './Group.css';
+import { FaPeopleGroup } from "react-icons/fa6";
+
 
 function Group() {
     const navigate = useNavigate();
@@ -187,7 +189,7 @@ function Group() {
                                     <span className="group-code">รหัส: {group.code}</span>
                                 </div>
                                 <div className="group-card-body">
-                                    <span className="group-members">👥 {group.members} คน</span>
+                                    <span className="group-members"><FaPeopleGroup /> {group.members} คน</span>
                                 </div>
                                 <div className="group-card-actions">
                                     <button className="card-btn view-btn" onClick={() => navigate(`/group-manage/${group.id}`)}>ดูรายละเอียด</button>
