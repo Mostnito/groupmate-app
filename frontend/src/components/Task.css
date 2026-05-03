@@ -38,6 +38,36 @@
 	gap: 16px;
 }
 
+.loading-state {
+	padding: 60px 20px;
+	text-align: center;
+}
+
+.loading-state p {
+	margin: 0;
+	color: var(--primary-blue);
+	font-size: 16px;
+	font-weight: 600;
+}
+
+.empty-state {
+	padding: 60px 20px;
+	text-align: center;
+}
+
+.empty-state p {
+	margin: 0;
+	color: var(--text-color);
+	font-size: 18px;
+	font-weight: 600;
+}
+
+.empty-state .sub-text {
+	font-size: 14px;
+	color: #7a8aa0;
+	margin-top: 8px;
+}
+
 .task-card {
 	background: var(--white);
 	border: 1px solid var(--border-color);

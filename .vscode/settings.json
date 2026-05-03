@@ -1,5 +1,9 @@
 {
     "chat.tools.terminal.autoApprove": {
-        "npx eslint": true
+        "npx eslint": true,
+        "/^cd \"c:\\\\Users\\\\Lnwmo\\\\OneDrive\\\\Documents\\\\learning-react\\\\GroupMate\\\\backend\"; psql -U postgres -d groupmate -c \"SELECT group_id, user_id, role FROM group_members WHERE user_id = 4 ORDER BY group_id;\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }

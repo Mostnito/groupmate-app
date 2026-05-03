@@ -13,6 +13,7 @@ import { FaCog } from "react-icons/fa";
 import Setting  from './Setting';
 import Task from './Task';
 import Chat from './Chat';
+import Group from './Group';
 
 
 
@@ -52,7 +53,7 @@ function Dashboard() {
     const renderContent = () => {
         switch(activeMenu) {
             case 'groups':
-                return <div className="content-section"><h2>กลุ่ม</h2><p>จัดการกลุ่มของคุณที่นี่</p></div>;
+                return <Group />;
             case 'chat':
                 return <Chat />;
             case 'task':
